@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { chatAPI, materialAPI } from '../services/api';
 import { TOPIC_PROMPTS } from '../constants/topicPrompts';
+import {
+  isDefaultSessionTitle,
+  generateSessionTitle,
+  bumpSessionInList,
+} from '../utils/sessionTitle';
 import Sidebar from '../components/chat/Sidebar';
 import ChatArea from '../components/chat/ChatArea';
 import ChatInput from '../components/chat/ChatInput';
@@ -103,18 +108,41 @@ export default function ChatPage() {
   const createSession = async () => {
     const res = await chatAPI.createSession();
     const newSession = res.data.session;
-    setSessions((prev) => [newSession, ...prev]);
+    setSessions((prev) => [newSession, ...prev.filter((s) => s.id !== newSession.id)]);
     setActiveSessionId(newSession.id);
     setMessages([]);
     setMaterials([]);
-    return newSession.id;
+    return newSession;
   };
+
+  const bumpSessionActivity = useCallback((sessionId, message, serverTitle, ensureSession) => {
+    setSessions((prev) => {
+      let list = prev;
+      if (ensureSession && !prev.some((s) => s.id === ensureSession.id)) {
+        list = [ensureSession, ...prev];
+      }
+
+      const current = list.find((s) => s.id === sessionId);
+      if (!current) return prev;
+
+      if (serverTitle) {
+        return bumpSessionInList(list, sessionId, { title: serverTitle });
+      }
+
+      if (isDefaultSessionTitle(current.title)) {
+        return bumpSessionInList(list, sessionId, { title: generateSessionTitle(message) });
+      }
+
+      return bumpSessionInList(list, sessionId);
+    });
+  }, []);
 
   const handleNewChat = async () => {
     setLoadingSession(true);
     closeSidebar();
     try {
       await createSession();
+      await fetchSessions();
     } catch (err) {
       console.error('Gagal membuat chat baru:', err.message);
     } finally {
@@ -122,9 +150,11 @@ export default function ChatPage() {
     }
   };
 
-  const sendMessageToSession = async (sessionId, message) => {
+  const sendMessageToSession = async (sessionId, message, ensureSession = null) => {
     sendingRef.current = true;
     setLoadingMsg(true);
+
+    bumpSessionActivity(sessionId, message, undefined, ensureSession);
 
     const tempUserMsg = {
       id: `temp-${Date.now()}`,
@@ -145,6 +175,11 @@ export default function ChatPage() {
         source: res.data.source,
       };
       setMessages((prev) => [...prev, botMsg]);
+
+      if (res.data.sessionTitle) {
+        bumpSessionActivity(sessionId, message, res.data.sessionTitle);
+      }
+
       await fetchSessions();
     } catch (err) {
       const status = err.response?.status;
@@ -162,6 +197,9 @@ export default function ChatPage() {
         created_at: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, errMsg]);
+
+      // Title sudah disimpan di backend sebelum AI; sinkronkan sidebar
+      await fetchSessions();
     } finally {
       setLoadingMsg(false);
       sendingRef.current = false;
@@ -172,11 +210,13 @@ export default function ChatPage() {
     if (!message?.trim() || isBusy || sendingRef.current) return;
 
     let sessionId = activeSessionId;
+    let createdSession = null;
 
     if (!sessionId) {
       setLoadingSession(true);
       try {
-        sessionId = await createSession();
+        createdSession = await createSession();
+        sessionId = createdSession.id;
       } catch (err) {
         console.error('Gagal membuat chat:', err.message);
         return;
@@ -186,7 +226,7 @@ export default function ChatPage() {
     }
 
     closeSidebar();
-    await sendMessageToSession(sessionId, message.trim());
+    await sendMessageToSession(sessionId, message.trim(), createdSession);
   };
 
   const handleTopicClick = async (topic) => {
@@ -198,12 +238,15 @@ export default function ChatPage() {
   const handleDeleteSession = async (sessionId) => {
     try {
       await chatAPI.deleteSession(sessionId);
-      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+
       if (activeSessionId === sessionId) {
         setActiveSessionId(null);
         setMessages([]);
         setMaterials([]);
+        closeSidebar();
       }
+
+      await fetchSessions();
     } catch (err) {
       console.error('Gagal menghapus chat:', err.message);
     }
@@ -215,7 +258,8 @@ export default function ChatPage() {
     if (!conversationId) {
       setLoadingSession(true);
       try {
-        conversationId = await createSession();
+        const newSession = await createSession();
+        conversationId = newSession.id;
       } catch (err) {
         console.error('Gagal membuat chat untuk upload:', err.message);
         return;
