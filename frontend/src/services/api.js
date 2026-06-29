@@ -48,11 +48,18 @@ const logApiError = (err) => {
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
   config.headers['ngrok-skip-browser-warning'] = 'true';
+  console.log("================================");
+  console.log("REQUEST");
+  console.log("BaseURL :", config.baseURL);
+  console.log("URL     :", config.url);
+  console.log("Method  :", config.method);
+  console.log("================================");
 
   return config;
 });
