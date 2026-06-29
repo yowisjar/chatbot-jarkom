@@ -1,0 +1,242 @@
+/* NetBot chat layout — responsive mobile */
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+.chat-layout {
+  display: flex;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  max-width: 100vw;
+  position: relative;
+}
+
+.chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.chat-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--input-container-bg);
+  color: var(--text-color);
+  font-size: 1.15rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.chat-sidebar-backdrop {
+  display: none;
+}
+
+.chat-header {
+  flex-shrink: 0;
+}
+
+.chat-header-left {
+  min-width: 0;
+  flex: 1;
+}
+
+.chat-header-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-area {
+  flex: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.chat-bubble {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.chat-empty-state {
+  overflow-x: hidden;
+}
+
+.chat-topic-grid {
+  width: 100%;
+  max-width: 500px;
+}
+
+.chat-input-wrapper {
+  flex-shrink: 0;
+}
+
+.chat-files-bar {
+  flex-shrink: 0;
+  overflow-x: hidden;
+}
+
+.chat-files-left {
+  min-width: 0;
+}
+
+.chat-files-list {
+  overflow-x: auto;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Mobile (≤768px) ── */
+@media (max-width: 768px) {
+  .chat-menu-btn {
+    display: flex;
+  }
+
+  .chat-sidebar {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    z-index: 1001;
+    height: 100vh !important;
+    height: 100dvh !important;
+    width: min(280px, 86vw) !important;
+    min-width: unset !important;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    box-shadow: none;
+  }
+
+  .chat-sidebar--open {
+    transform: translateX(0);
+    box-shadow: 4px 0 28px rgba(0, 0, 0, 0.35);
+  }
+
+  .chat-sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.45);
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    animation: chatFadeIn 0.2s ease;
+  }
+
+  .chat-header {
+    padding: 0.65rem 0.85rem !important;
+    gap: 0.5rem;
+  }
+
+  .chat-header-title {
+    font-size: 0.82rem !important;
+    max-width: calc(100vw - 108px);
+  }
+
+  .chat-area {
+    padding: 0.85rem !important;
+  }
+
+  .chat-bubble {
+    max-width: 88% !important;
+  }
+
+  .chat-empty-state {
+    padding: 1.25rem 0.75rem !important;
+  }
+
+  .chat-empty-icon {
+    font-size: 3rem !important;
+  }
+
+  .chat-empty-title {
+    font-size: 1.2rem !important;
+  }
+
+  .chat-topic-grid {
+    max-width: 100% !important;
+    padding: 0 0.25rem;
+    gap: 0.45rem !important;
+  }
+
+  .chat-topic-chip {
+    font-size: 0.75rem !important;
+    padding: 0.35rem 0.75rem !important;
+  }
+
+  .chat-input-wrapper {
+    padding: 0.65rem 0.85rem max(0.85rem, env(safe-area-inset-bottom)) !important;
+  }
+
+  .chat-input-hint {
+    font-size: 0.7rem !important;
+  }
+
+  .chat-files-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.5rem !important;
+    padding: 0.5rem 0.85rem !important;
+  }
+
+  .chat-files-left {
+    width: 100%;
+  }
+
+  .chat-files-upload-btn {
+    width: 100% !important;
+    text-align: center !important;
+    flex-shrink: unset !important;
+  }
+
+  .chat-loading-messages {
+    padding: 1rem;
+  }
+
+  .chat-upload-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  .chat-upload-modal {
+    max-width: 100% !important;
+    border-radius: 16px 16px 0 0 !important;
+    max-height: 92dvh;
+    overflow-y: auto;
+    padding: 1.25rem 1rem max(1.25rem, env(safe-area-inset-bottom)) !important;
+  }
+
+  .chat-upload-actions {
+    flex-direction: column-reverse !important;
+  }
+
+  .chat-upload-actions button {
+    width: 100%;
+    padding: 0.75rem 1rem !important;
+  }
+}
+
+@keyframes chatFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
