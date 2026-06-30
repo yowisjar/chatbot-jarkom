@@ -65,8 +65,7 @@ const migrate = async () => {
     await client.query(`ALTER TABLE materials ADD COLUMN IF NOT EXISTS uploaded_at TIMESTAMP DEFAULT NOW();`);
     await client.query(`ALTER TABLE materials ADD COLUMN IF NOT EXISTS is_global BOOLEAN DEFAULT FALSE;`);
 
-    await client.query(`ALTER TABLE material_chunks ADD COLUMN IF NOT EXISTS slide_number INTEGER;`);
-    await client.query(`ALTER TABLE material_chunks ADD COLUMN IF NOT EXISTS slide_title VARCHAR(255);`);
+    
 
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_materials_conversation_id ON materials(conversation_id);
@@ -119,6 +118,9 @@ const migrate = async () => {
         UNIQUE(material_id, chunk_index)
       );
     `);
+
+    await client.query(`ALTER TABLE material_chunks ADD COLUMN IF NOT EXISTS slide_number INTEGER;`);
+    await client.query(`ALTER TABLE material_chunks ADD COLUMN IF NOT EXISTS slide_title VARCHAR(255);`);
 
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_material_chunks_material_id ON material_chunks(material_id);
