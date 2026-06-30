@@ -27,6 +27,7 @@ const loadKeys = () => {
     key: value.trim(),
     available: true,
     cooldownUntil: null,
+    permanentUnavailable: false,
   }));
 
   roundRobinIndex = 0;
@@ -42,7 +43,7 @@ const resetCooldown = () => {
   let reactivated = 0;
 
   for (const entry of keys) {
-    if (!entry.available && entry.cooldownUntil && entry.cooldownUntil <= now) {
+    if (!entry.permanentUnavailable && !entry.available && entry.cooldownUntil && entry.cooldownUntil <= now) {
       entry.available = true;
       entry.cooldownUntil = null;
       reactivated += 1;
@@ -119,6 +120,19 @@ const markUnavailable = (id) => {
   return entry;
 };
 
+
+const markPermanentUnavailable = (id) => {
+  const entry = findKeyById(id);
+  if (!entry) return null;
+  entry.available = false;
+  entry.cooldownUntil = null;
+  entry.permanentUnavailable = true;
+  console.warn(`[Gemini] Key #${id} permanently disabled`);
+  const next = peekNextKey();
+  if (next && next.id !== id) console.log(`[Gemini] Switching to Key #${next.id}`);
+  return entry;
+};
+
 const getStatus = () => {
   resetCooldown();
 
@@ -141,6 +155,7 @@ module.exports = {
   getCurrentKey,
   nextKey,
   markUnavailable,
+  markPermanentUnavailable,
   resetCooldown,
   availableKeys,
   getStatus,
