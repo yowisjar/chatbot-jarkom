@@ -16,6 +16,24 @@ const migrate = async () => {
       );
     `);
 
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'student' CHECK (role IN ('admin', 'student'));`);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS rps_documents (
+        id SERIAL PRIMARY KEY,
+        original_name VARCHAR(255) NOT NULL,
+        file_name VARCHAR(255) NOT NULL,
+        file_path VARCHAR(500) NOT NULL,
+        file_size INTEGER NOT NULL,
+        mime_type VARCHAR(100) NOT NULL,
+        extracted_text TEXT,
+        parsed_json JSONB,
+        uploaded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
     await client.query(`
       CREATE TABLE IF NOT EXISTS chat_sessions (
         id SERIAL PRIMARY KEY,
@@ -187,6 +205,25 @@ const migrate = async () => {
     if (materialsNeedChunk.rows.length > 0) {
       console.log(`  ↳ Rechunk ${materialsNeedChunk.rows.length} materi lama`);
     }
+
+    // Tabel topik pembelajaran dari RPS
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS rps_topics (
+        id SERIAL PRIMARY KEY,
+        rps_document_id INTEGER NOT NULL REFERENCES rps_documents(id) ON DELETE CASCADE,
+        meeting_number INTEGER,
+        topic_title VARCHAR(255) NOT NULL,
+        sub_cpmk TEXT,
+        cpmk TEXT,
+        "references" TEXT,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_rps_topics_document_id ON rps_topics(rps_document_id);
+    `);
 
     console.log('✅ Migrasi database selesai!');
   } catch (err) {

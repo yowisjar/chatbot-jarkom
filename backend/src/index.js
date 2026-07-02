@@ -8,6 +8,8 @@ const authRoutes = require('./routes/auth');
 const chatRoutes = require('./routes/chat');
 const materialRoutes = require('./routes/material');
 const systemRoutes = require('./routes/system');
+const adminRoutes = require('./routes/admin');
+const topicRoutes = require('./routes/topics');
 const { sendMessage } = require('./controllers/chatController');
 const authMiddleware = require('./middleware/auth');
 
@@ -17,6 +19,7 @@ const HOST = process.env.HOST || '0.0.0.0';
 
 // Middleware
 app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json());
 
 // Routes
@@ -24,6 +27,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/chats', chatRoutes);
 app.use('/api/materials', materialRoutes);
 app.use('/api/system', systemRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/topics', topicRoutes);
 app.post('/api/chat', authMiddleware, sendMessage);  // Send message endpoint
 
 // Health check

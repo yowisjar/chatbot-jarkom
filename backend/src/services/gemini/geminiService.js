@@ -257,25 +257,44 @@ const executeGenerateContent = async (systemInstruction, contents) => {
 //   );
 // };
 
-const generateFallbackResponse = async (conversationHistory) => {
+const injectRpsContext = (rpsText, contents) => {
+  if (rpsText) {
+    contents.unshift({
+      role: 'user',
+      parts: [{ text: `[ISI RPS MATA KULIAH]\n\n${rpsText}\n\n[SELESAI ISI RPS]` }],
+    });
+    // Add a dummy model acknowledgement to keep the conversation alternating properly
+    contents.splice(1, 0, {
+      role: 'model',
+      parts: [{ text: `Baik, saya telah membaca RPS mata kuliah tersebut dan akan menggunakannya sebagai acuan utama.` }],
+    });
+  }
+  return contents;
+};
+
+const generateFallbackResponse = async (conversationHistory, rpsText) => {
   if (!conversationHistory || conversationHistory.length === 0) {
     throw new GeminiError('Riwayat percakapan tidak boleh kosong', 400);
   }
 
-  const contents = formatHistoryForGemini(conversationHistory);
+  let contents = formatHistoryForGemini(conversationHistory);
+  contents = injectRpsContext(rpsText, contents);
+  
   return executeGenerateContent(FALLBACK_SYSTEM_PROMPT, contents);
 };
 
-const generateUploadedMaterialChatResponse = async (conversationHistory) => {
+const generateUploadedMaterialChatResponse = async (conversationHistory, rpsText) => {
   if (!conversationHistory || conversationHistory.length === 0) {
     throw new GeminiError('Riwayat percakapan tidak boleh kosong', 400);
   }
 
-  const contents = formatHistoryForGemini(conversationHistory);
+  let contents = formatHistoryForGemini(conversationHistory);
+  contents = injectRpsContext(rpsText, contents);
+
   return executeGenerateContent(UPLOADED_MATERIAL_CHAT_PROMPT, contents);
 };
 
-const generateRagResponse = async ({ question, chunks, conversationHistory = [] }) => {
+const generateRagResponse = async ({ question, chunks, conversationHistory = [], rpsText }) => {
   if (!question?.trim()) {
     throw new GeminiError('Pertanyaan tidak boleh kosong', 400);
   }
@@ -287,10 +306,12 @@ const generateRagResponse = async ({ question, chunks, conversationHistory = [] 
   const priorHistory = conversationHistory.slice(0, -1);
   const ragPrompt = buildRagUserPrompt(question, chunks);
 
-  const contents = [
+  let contents = [
     ...formatHistoryForGemini(priorHistory),
     { role: 'user', parts: [{ text: ragPrompt }] },
   ];
+
+  contents = injectRpsContext(rpsText, contents);
 
   return executeGenerateContent(RAG_SYSTEM_PROMPT, contents);
 };

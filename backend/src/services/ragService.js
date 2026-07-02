@@ -10,6 +10,8 @@ const { buildReferences } = require('../utils/referenceFormatter');
 const { detectQuestionIntent } = require('../utils/questionIntent');
 const { isMaterialNotFoundReply, MATERIAL_NOT_FOUND_REPLY } = require('../constants/prompts');
 
+const { getLatestRps } = require('./rpsParserService');
+
 /**
  * @param {string} question
  * @param {Array<{role: string, content: string}>} conversationHistory
@@ -23,16 +25,19 @@ const generateAnswer = async (question, conversationHistory, conversationId) => 
     throw new Error('Pertanyaan tidak boleh kosong');
   }
 
+  // 1. Ambil RPS terbaru
+  const rpsText = await getLatestRps();
+
   const intent = detectQuestionIntent(trimmedQuestion);
   const materialCount = await materialRepository.countMaterialsInConversation(conversationId);
   const hasUploadedMaterials = materialCount > 0;
 
-  console.log(`[RAG] intent=${intent} | conversationId=${conversationId} | uploadedMaterials=${materialCount}`);
+  console.log(`[RAG] intent=${intent} | conversationId=${conversationId} | uploadedMaterials=${materialCount} | hasRps=${!!rpsText}`);
 
   if (intent !== 'material_question') {
     const reply = hasUploadedMaterials
-      ? await generateUploadedMaterialChatResponse(conversationHistory)
-      : await generateFallbackResponse(conversationHistory);
+      ? await generateUploadedMaterialChatResponse(conversationHistory, rpsText)
+      : await generateFallbackResponse(conversationHistory, rpsText);
 
     return {
       reply,
@@ -55,6 +60,7 @@ const generateAnswer = async (question, conversationHistory, conversationId) => 
         question: trimmedQuestion,
         chunks: topChunks,
         conversationHistory,
+        rpsText
       });
 
       const usedMaterial = !isMaterialNotFoundReply(reply);
@@ -89,6 +95,7 @@ const generateAnswer = async (question, conversationHistory, conversationId) => 
       question: trimmedQuestion,
       chunks: topChunks,
       conversationHistory,
+      rpsText
     });
 
     const usedMaterial = !isMaterialNotFoundReply(reply);
@@ -104,7 +111,7 @@ const generateAnswer = async (question, conversationHistory, conversationId) => 
     };
   }
 
-  const reply = await generateFallbackResponse(conversationHistory);
+  const reply = await generateFallbackResponse(conversationHistory, rpsText);
 
   return {
     reply,
