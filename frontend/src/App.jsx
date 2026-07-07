@@ -7,7 +7,7 @@ import RegisterPage from './pages/RegisterPage';
 import ChatPage from './pages/ChatPage';
 import AdminPage from './pages/AdminPage';
 import './App.css';
-// test comment 1
+
 export default function App() {
   return (
     <ThemeProvider>
