@@ -89,7 +89,7 @@ export const chatAPI = {
   getSessions: () => api.get('/chats'),
   getMessages: (id) => api.get(`/chats/${id}`),
   createSession: () => api.post('/chats/new'),
-  sendMessage: (session_id, message) => api.post('/chat', { session_id, message }),
+  sendMessage: (session_id, message, topicId) => api.post('/chat', { session_id, message, topicId }),
   deleteSession: (id) => api.delete(`/chats/${id}`),
 };
 
@@ -104,6 +104,11 @@ export const materialAPI = {
       },
     }),
   deleteMaterial: (id) => api.delete(`/materials/${id}`),
+};
+
+export const topicAPI = {
+  getTopics: () => api.get('/topics'),
+  getTopicById: (id) => api.get(`/topics/${id}`),
 };
 
 export const ALLOWED_MATERIAL_EXTENSIONS = ['.pdf', '.doc', '.docx', '.ppt', '.pptx'];

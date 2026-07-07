@@ -1,6 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { HOME_TOPICS } from '../../constants/topicPrompts';
 
 // Format text dari bot (bold, newline)
 const formatMessage = (text) => {
@@ -11,13 +10,55 @@ const formatMessage = (text) => {
     .replace(/\n/g, '<br/>');
 };
 
-export default function ChatArea({ messages, loading, activeSessionId, onTopicClick, chipsDisabled }) {
+export default function ChatArea({ messages, loading, activeSessionId, onTopicClick, chipsDisabled, quickTopics = [], loadingTopics }) {
   const { user } = useAuth();
   const bottomRef = useRef(null);
+  const [showAllTopics, setShowAllTopics] = useState(false);
+
+  const maxInitialTopics = 6;
+  const displayedTopics = showAllTopics ? quickTopics : quickTopics.slice(0, maxInitialTopics);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
+
+  const renderQuickTopics = () => {
+    if (loadingTopics) {
+      return <p style={{ color: 'var(--text-hint)' }}>Memuat topik...</p>;
+    }
+    if (quickTopics.length === 0) return null;
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', width: '100%' }}>
+        <div className="chat-topic-grid" style={styles.topicGrid}>
+          {displayedTopics.map((topic) => (
+            <button
+              key={topic.id}
+              type="button"
+              onClick={() => onTopicClick?.(topic.id)}
+              disabled={chipsDisabled}
+              className="chat-topic-chip"
+              style={{
+                ...styles.topicChip,
+                ...(chipsDisabled ? styles.topicChipDisabled : {}),
+              }}
+            >
+              📘 {topic.title}
+            </button>
+          ))}
+        </div>
+        {quickTopics.length > maxInitialTopics && !showAllTopics && (
+          <button
+            type="button"
+            onClick={() => setShowAllTopics(true)}
+            style={styles.showAllBtn}
+          >
+            Lihat Semua
+          </button>
+        )}
+      </div>
+    );
+  };
 
   if (!activeSessionId) {
     return (
@@ -27,23 +68,7 @@ export default function ChatArea({ messages, loading, activeSessionId, onTopicCl
         <p style={styles.emptySubtitle}>
           Tanyakan apa saja seputar Jaringan Komputer.
         </p>
-        <div className="chat-topic-grid" style={styles.topicGrid}>
-          {HOME_TOPICS.map((topic) => (
-            <button
-              key={topic}
-              type="button"
-              onClick={() => onTopicClick?.(topic)}
-              disabled={chipsDisabled}
-              className="chat-topic-chip"
-              style={{
-                ...styles.topicChip,
-                ...(chipsDisabled ? styles.topicChipDisabled : {}),
-              }}
-            >
-              {topic}
-            </button>
-          ))}
-        </div>
+        {renderQuickTopics()}
       </div>
     );
   }
@@ -54,6 +79,9 @@ export default function ChatArea({ messages, loading, activeSessionId, onTopicCl
         <div style={styles.emptyChat}>
           <p style={styles.emptyChatText}>💬 Mulai percakapan baru!</p>
           <p style={styles.emptyChatHint}>Ketik pertanyaanmu tentang Jaringan Komputer di bawah.</p>
+          <div style={{ marginTop: '2rem', width: '100%', display: 'flex', justifyContent: 'center' }}>
+            {renderQuickTopics()}
+          </div>
         </div>
       ) : (
         <>
@@ -170,6 +198,16 @@ const styles = {
   topicChipDisabled: {
     cursor: 'not-allowed',
     opacity: 0.55,
+  },
+  showAllBtn: {
+    background: 'transparent',
+    border: 'none',
+    color: '#3b82f6',
+    cursor: 'pointer',
+    fontSize: '0.85rem',
+    fontWeight: '500',
+    fontFamily: "'Inter', sans-serif",
+    textDecoration: 'underline',
   },
   emptyChat: {
     flex: 1,

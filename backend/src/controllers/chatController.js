@@ -3,6 +3,7 @@ const path = require('path');
 const pool = require('../config/database');
 const { generateAnswer } = require('../services/ragService');
 const { GeminiError } = require('../services/geminiService');
+const topicRepository = require('../repositories/topicRepository');
 
 const DEFAULT_TITLES = new Set(['Chat Baru', 'New Chat']);
 
@@ -94,7 +95,7 @@ const getSessionMessages = async (req, res) => {
 
 // POST /api/chat — Kirim pesan dan dapatkan jawaban AI
 const sendMessage = async (req, res) => {
-  const { session_id, message } = req.body;
+  const { session_id, message, topicId } = req.body;
 
   if (!session_id || !message || !message.trim()) {
     return res.status(400).json({ message: 'session_id dan message wajib diisi' });
@@ -146,8 +147,37 @@ const sendMessage = async (req, res) => {
       content: msg.message,
     }));
 
+    let aiQuestion = trimmedMessage;
+    
+    if (topicId) {
+      try {
+        const topic = await topicRepository.getTopicById(topicId);
+        if (topic) {
+          const promptParts = [];
+          if (topic.title) promptParts.push(`Topik: ${topic.title}`);
+          if (topic.meeting_number) promptParts.push(`Pertemuan ${topic.meeting_number}`);
+          
+          const targetText = [];
+          if (topic.cpmk) targetText.push(topic.cpmk);
+          if (topic.sub_cpmk) targetText.push(topic.sub_cpmk);
+          
+          if (targetText.length > 0) {
+            promptParts.push('Target Pembelajaran\n' + targetText.join('\n'));
+          }
+          
+          const internalContext = promptParts.join('\n\n');
+          
+          if (internalContext) {
+            aiQuestion = `${trimmedMessage}\n\n[CONTEXT INTERNAL RPS]\n${internalContext}`;
+          }
+        }
+      } catch (err) {
+        console.error('[Chat] Gagal mengambil detail topik untuk internal context:', err.message);
+      }
+    }
+
     const { reply: botReply, source, materialsUsed, references } = await generateAnswer(
-      trimmedMessage,
+      aiQuestion,
       conversationHistory,
       session_id
     );

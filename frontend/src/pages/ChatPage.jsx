@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { chatAPI, materialAPI } from '../services/api';
-import { TOPIC_PROMPTS } from '../constants/topicPrompts';
+import { chatAPI, materialAPI, topicAPI } from '../services/api';
 import {
   isDefaultSessionTitle,
   generateSessionTitle,
@@ -26,6 +25,8 @@ export default function ChatPage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadConversationId, setUploadConversationId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [quickTopics, setQuickTopics] = useState([]);
+  const [loadingTopics, setLoadingTopics] = useState(false);
   const sendingRef = useRef(false);
 
   const isHome = activeSessionId === null;
@@ -60,9 +61,23 @@ export default function ChatPage() {
     }
   }, []);
 
+  const fetchTopics = useCallback(async () => {
+    setLoadingTopics(true);
+    try {
+      const res = await topicAPI.getTopics();
+      setQuickTopics(res.data || []);
+    } catch (err) {
+      console.error('Gagal memuat topik:', err.message);
+      setQuickTopics([]);
+    } finally {
+      setLoadingTopics(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchSessions();
-  }, [fetchSessions]);
+    fetchTopics();
+  }, [fetchSessions, fetchTopics]);
 
   useEffect(() => {
     fetchMaterials(activeSessionId);
@@ -150,7 +165,7 @@ export default function ChatPage() {
     }
   };
 
-  const sendMessageToSession = async (sessionId, message, ensureSession = null) => {
+  const sendMessageToSession = async (sessionId, message, ensureSession = null, topicId = null) => {
     sendingRef.current = true;
     setLoadingMsg(true);
 
@@ -165,7 +180,7 @@ export default function ChatPage() {
     setMessages((prev) => [...prev, tempUserMsg]);
 
     try {
-      const res = await chatAPI.sendMessage(sessionId, message);
+      const res = await chatAPI.sendMessage(sessionId, message, topicId);
       const botMsg = {
         id: `bot-${Date.now()}`,
         sender: 'bot',
@@ -206,7 +221,7 @@ export default function ChatPage() {
     }
   };
 
-  const handleSendMessage = async (message) => {
+  const handleSendMessage = async (message, topicId = null) => {
     if (!message?.trim() || isBusy || sendingRef.current) return;
 
     let sessionId = activeSessionId;
@@ -226,13 +241,16 @@ export default function ChatPage() {
     }
 
     closeSidebar();
-    await sendMessageToSession(sessionId, message.trim(), createdSession);
+    await sendMessageToSession(sessionId, message.trim(), createdSession, topicId);
   };
 
-  const handleTopicClick = async (topic) => {
-    const prompt = TOPIC_PROMPTS[topic];
-    if (!prompt || isBusy || sendingRef.current) return;
-    await handleSendMessage(prompt);
+  const handleTopicClick = async (topicId) => {
+    if (isBusy || sendingRef.current) return;
+    const topic = quickTopics.find((t) => t.id === topicId);
+    if (!topic) return;
+    
+    const shortMessage = `📘 ${topic.title || 'Topik'}`;
+    await handleSendMessage(shortMessage, topicId);
   };
 
   const handleDeleteSession = async (sessionId) => {
@@ -358,6 +376,8 @@ export default function ChatPage() {
             activeSessionId={activeSessionId}
             onTopicClick={handleTopicClick}
             chipsDisabled={isBusy}
+            quickTopics={quickTopics}
+            loadingTopics={loadingTopics}
           />
         )}
 
