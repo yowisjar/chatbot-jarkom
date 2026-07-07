@@ -43,6 +43,7 @@ const upload = multer({
 });
 
 // Route for getting latest RPS
+//test
 router.get('/rps/latest', (req, res, next) => {
   console.log('[DEBUG ROUTE] === GET /api/admin/rps/latest HIT ===');
   console.log('[DEBUG ROUTE] Authorization Header:', req.headers.authorization ? 'ADA' : 'TIDAK ADA');
