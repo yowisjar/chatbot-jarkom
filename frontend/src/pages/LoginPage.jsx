@@ -16,9 +16,14 @@ export default function LoginPage({ isAdmin }) {
     setLoading(true);
     try {
       const user = await login(form.email, form.password);
+
+      console.log("LOGIN USER :", user);
+
       if (user.role === 'admin') {
+        console.log("GO ADMIN");
         navigate('/admin');
       } else {
+        console.log("GO USER");
         navigate('/');
       }
     } catch (err) {
