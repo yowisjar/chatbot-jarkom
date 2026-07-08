@@ -20,11 +20,11 @@ export default function ConversationFiles({
   return (
     <div className="chat-files-bar" style={styles.bar}>
       <div className="chat-files-left" style={styles.left}>
-        <span style={styles.label}>File chat ini:</span>
+        <span style={styles.label}>Materi Pendukung:</span>
         {loading ? (
           <span style={styles.loadingText}>Memuat...</span>
         ) : materials.length === 0 ? (
-          <span style={styles.emptyText}>Belum ada file · upload untuk RAG pada chat ini</span>
+          <span style={styles.emptyText}>Belum ada materi yang diunggah pada percakapan ini.</span>
         ) : (
           <div className="chat-files-list" style={styles.fileList}>
             {materials.map((item) => (
