@@ -1,10 +1,8 @@
-const fs = require('fs');
 const path = require('path');
 const pool = require('../config/database');
 const materialRepository = require('../repositories/materialRepository');
 const { extractTextFromDocument, FILE_TYPE_LABELS } = require('./documentExtractorService');
 const { splitTextIntoChunks, splitSegmentsIntoChunks } = require('./chunkService');
-const { UPLOAD_DIR } = require('../config/upload');
 
 const DAILY_LIMIT_MESSAGE =
   'Batas upload file harian sudah tercapai. Maksimal 2 file per hari.';
@@ -86,45 +84,42 @@ const assertDailyUploadLimit = async (userId) => {
   }
 };
 
+/**
+ * Upload dan proses file materi mahasiswa.
+ * Menggunakan req.file.buffer (memoryStorage) — file tidak disimpan di disk.
+ */
 const uploadMaterialFile = async (file, title, { userId, conversationId }) => {
   await assertDailyUploadLimit(userId);
 
   const resolvedConversationId = await resolveConversationId(userId, conversationId);
-  const filePath = path.join(UPLOAD_DIR, file.filename);
 
-  try {
-    const { text: extractedText, fileType, segments } = await extractTextFromDocument(
-      filePath,
-      file.originalname
-    );
+  // Ekstrak teks langsung dari buffer (memoryStorage — tidak ada path fisik)
+  const { text: extractedText, fileType, segments } = await extractTextFromDocument(
+    file.buffer,
+    file.originalname
+  );
 
-    const material = await materialRepository.createMaterial({
-      title: sanitizeTitle(title, file.originalname),
-      filename: file.originalname,
-      filePath: path.relative(path.join(__dirname, '../..'), filePath).replace(/\\/g, '/'),
-      fileType,
-      content: extractedText,
-      userId,
-      conversationId: resolvedConversationId,
-    });
+  const material = await materialRepository.createMaterial({
+    title: sanitizeTitle(title, file.originalname),
+    filename: file.originalname,
+    filePath: null, // File tidak disimpan di disk
+    fileType,
+    content: extractedText,
+    userId,
+    conversationId: resolvedConversationId,
+  });
 
-    const chunksCreated = await saveChunksForMaterial(material.id, extractedText, segments);
+  const chunksCreated = await saveChunksForMaterial(material.id, extractedText, segments);
 
-    return {
-      material,
-      conversationId: resolvedConversationId,
-      filename: file.originalname,
-      fileType,
-      fileTypeLabel: FILE_TYPE_LABELS[fileType] || fileType,
-      charactersExtracted: extractedText.length,
-      chunksCreated,
-    };
-  } catch (err) {
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-    }
-    throw err;
-  }
+  return {
+    material,
+    conversationId: resolvedConversationId,
+    filename: file.originalname,
+    fileType,
+    fileTypeLabel: FILE_TYPE_LABELS[fileType] || fileType,
+    charactersExtracted: extractedText.length,
+    chunksCreated,
+  };
 };
 
 const rechunkAllMaterials = async () => {
@@ -157,12 +152,7 @@ const deleteMaterial = async (id, userId) => {
     return null;
   }
 
-  if (deleted.file_path) {
-    const absolutePath = path.join(__dirname, '../..', deleted.file_path);
-    if (fs.existsSync(absolutePath)) {
-      fs.unlinkSync(absolutePath);
-    }
-  }
+  // File tidak disimpan di disk (memoryStorage) — tidak perlu hapus file fisik
 
   return deleted;
 };

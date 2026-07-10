@@ -1,21 +1,19 @@
-const fs = require('fs');
 const { PDFParse } = require('pdf-parse');
 const { sanitizeExtractedText, validateExtractedText } = require('../utils/textSanitizer');
 
 /**
  * Ekstrak teks per halaman PDF. Satu halaman = satu slide (asumsi PDF dari PowerPoint).
- * @param {string} filePath
+ * @param {Buffer} buffer - Buffer isi file PDF (dari req.file.buffer via memoryStorage)
  * @returns {Promise<{ text: string, pages: Array<{ slideNumber: number, slideTitle: null, content: string }> }>}
  */
-const extractPagesFromPdf = async (filePath) => {
-  if (!fs.existsSync(filePath)) {
-    throw new Error('File PDF tidak ditemukan di server');
+const extractPagesFromPdf = async (buffer) => {
+  if (!buffer || !Buffer.isBuffer(buffer)) {
+    throw new Error('Buffer PDF tidak valid');
   }
 
   let parser;
 
   try {
-    const buffer = fs.readFileSync(filePath);
     parser = new PDFParse({ data: buffer });
     const result = await parser.getText();
 
@@ -43,7 +41,7 @@ const extractPagesFromPdf = async (filePath) => {
       throw err;
     }
 
-    console.error('[PDF] Gagal membaca file:', err.message);
+    console.error('[PDF] Gagal membaca buffer:', err.message);
     throw new Error(`Gagal membaca isi PDF: ${err.message}`);
   } finally {
     if (parser && typeof parser.destroy === 'function') {
@@ -53,12 +51,12 @@ const extractPagesFromPdf = async (filePath) => {
 };
 
 /**
- * Ekstrak teks dari file PDF di disk (gabungan semua halaman).
- * @param {string} filePath
+ * Ekstrak teks dari buffer PDF (gabungan semua halaman).
+ * @param {Buffer} buffer - Buffer isi file PDF (dari req.file.buffer via memoryStorage)
  * @returns {Promise<string>}
  */
-const extractTextFromPdf = async (filePath) => {
-  const { text } = await extractPagesFromPdf(filePath);
+const extractTextFromPdf = async (buffer) => {
+  const { text } = await extractPagesFromPdf(buffer);
   return text;
 };
 

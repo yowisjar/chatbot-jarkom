@@ -1,8 +1,6 @@
 const path = require('path');
-const fs = require('fs');
 const multer = require('multer');
 
-const UPLOAD_DIR = path.join(__dirname, '../../uploads/materials');
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx', '.ppt', '.pptx'];
@@ -15,20 +13,8 @@ const ALLOWED_MIME_TYPES = new Set([
   'application/vnd.ms-powerpoint',
 ]);
 
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, UPLOAD_DIR);
-  },
-  filename: (_req, file, cb) => {
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
-    cb(null, `${uniqueSuffix}-${safeName}`);
-  },
-});
+// Gunakan memoryStorage agar kompatibel dengan Vercel (tidak ada akses filesystem permanen)
+const storage = multer.memoryStorage();
 
 const materialFileFilter = (_req, file, cb) => {
   const ext = path.extname(file.originalname).toLowerCase();
@@ -55,7 +41,6 @@ const materialUpload = multer({
 module.exports = {
   materialUpload,
   pdfUpload: materialUpload,
-  UPLOAD_DIR,
   MAX_FILE_SIZE,
   ALLOWED_EXTENSIONS,
 };

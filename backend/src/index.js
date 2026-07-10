@@ -57,12 +57,19 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Terjadi kesalahan server' });
 });
 
-app.listen(PORT, HOST, () => {
-  console.log(`🚀 Server berjalan di http://${HOST}:${PORT}`);
-  console.log(`🏥 Health check: http://${HOST}:${PORT}/api/health`);
-  console.log(`🌐 CORS: localhost:3000/5173 + *.vercel.app + FRONTEND_URL`);
-  logGeminiStartup();
-}).on('error', (err) => {
-  console.error(`❌ Gagal bind server ke ${HOST}:${PORT}:`, err.message);
-  process.exit(1);
-});
+// Jalankan HTTP server hanya di luar Vercel (development lokal, VPS, dsb.)
+// Vercel menginject env var VERCEL=1 secara otomatis di semua deployment-nya.
+if (process.env.VERCEL !== '1') {
+  app.listen(PORT, HOST, () => {
+    console.log(`🚀 Server berjalan di http://${HOST}:${PORT}`);
+    console.log(`🏥 Health check: http://${HOST}:${PORT}/api/health`);
+    console.log(`🌐 CORS: localhost:3000/5173 + *.vercel.app + FRONTEND_URL`);
+    logGeminiStartup();
+  }).on('error', (err) => {
+    console.error(`❌ Gagal bind server ke ${HOST}:${PORT}:`, err.message);
+    process.exit(1);
+  });
+}
+
+// Export app sebagai serverless function handler untuk Vercel
+module.exports = app;

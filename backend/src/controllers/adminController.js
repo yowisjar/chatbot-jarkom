@@ -8,17 +8,17 @@ const uploadRps = async (req, res) => {
       return res.status(400).json({ message: 'File RPS wajib diupload.' });
     }
 
-    const { originalname, filename, path: filePath, size, mimetype } = req.file;
+    const { originalname, size, mimetype, buffer } = req.file;
     const userId = req.user.id;
 
-    // Extract text
-    const extractedText = await extractTextFromPdf(filePath);
+    // Extract text dari buffer (memoryStorage — tidak ada file di disk)
+    const extractedText = await extractTextFromPdf(buffer);
 
     // Save to database
     const documentData = {
       original_name: originalname,
-      file_name: filename,
-      file_path: filePath,
+      file_name: originalname,
+      file_path: null,
       file_size: size,
       mime_type: mimetype,
       extracted_text: extractedText,

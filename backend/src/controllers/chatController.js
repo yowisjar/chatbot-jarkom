@@ -1,5 +1,3 @@
-const fs = require('fs');
-const path = require('path');
 const pool = require('../config/database');
 const { generateAnswer } = require('../services/ragService');
 const { GeminiError } = require('../services/geminiService');
@@ -15,23 +13,9 @@ const generateTitle = (message) => {
   return cleaned.length > 50 ? `${cleaned.substring(0, 50)}...` : cleaned;
 };
 
-const removeConversationUploadFiles = async (sessionId, userId) => {
-  const result = await pool.query(
-    'SELECT file_path FROM materials WHERE conversation_id = $1 AND user_id = $2',
-    [sessionId, userId]
-  );
-
-  for (const row of result.rows) {
-    if (!row.file_path) continue;
-    const absolutePath = path.join(__dirname, '../..', row.file_path);
-    try {
-      if (fs.existsSync(absolutePath)) {
-        fs.unlinkSync(absolutePath);
-      }
-    } catch (err) {
-      console.error('[Chat] Gagal hapus file upload:', row.file_path, err.message);
-    }
-  }
+// File tidak disimpan di disk (memoryStorage) — tidak ada cleanup fisik yang diperlukan
+const removeConversationUploadFiles = async (_sessionId, _userId) => {
+  // no-op: file tidak pernah ditulis ke filesystem
 };
 
 // POST /api/chats/new — Buat session baru

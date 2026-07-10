@@ -1,4 +1,3 @@
-const fs = require('fs');
 const path = require('path');
 const mammoth = require('mammoth');
 const JSZip = require('jszip');
@@ -63,16 +62,23 @@ const extractSlideTitleFromXml = (xml) => {
   return null;
 };
 
-const extractTextFromDocx = async (filePath) => {
-  const result = await mammoth.extractRawText({ path: filePath });
+/**
+ * Ekstrak teks dari buffer DOCX.
+ * @param {Buffer} buffer
+ */
+const extractTextFromDocx = async (buffer) => {
+  const result = await mammoth.extractRawText({ buffer });
   const rawText = result.value ?? '';
   const cleanText = sanitizeExtractedText(rawText);
   logExtraction('docx', rawText.length, cleanText.length);
   return { text: validateExtractedText(cleanText, 'File Word (DOCX)'), segments: null };
 };
 
-const extractSlidesFromPptx = async (filePath) => {
-  const buffer = fs.readFileSync(filePath);
+/**
+ * Ekstrak slide dari buffer PPTX.
+ * @param {Buffer} buffer
+ */
+const extractSlidesFromPptx = async (buffer) => {
   const zip = await JSZip.loadAsync(buffer);
 
   const slidePaths = Object.keys(zip.files)
@@ -112,13 +118,13 @@ const extractSlidesFromPptx = async (filePath) => {
 };
 
 /**
- * Ekstrak teks dari file materi berdasarkan ekstensi/tipe.
- * @param {string} filePath
- * @param {string} originalFilename
+ * Ekstrak teks dari buffer file materi berdasarkan ekstensi/tipe.
+ * @param {Buffer} buffer - Buffer isi file (dari req.file.buffer via memoryStorage)
+ * @param {string} originalFilename - Nama asli file untuk menentukan tipe
  * @returns {Promise<{ text: string, fileType: string, segments: Array|null }>}
  * segments: [{ slideNumber, slideTitle, content }]
  */
-const extractTextFromDocument = async (filePath, originalFilename) => {
+const extractTextFromDocument = async (buffer, originalFilename) => {
   const fileType = resolveFileType(originalFilename);
 
   if (!fileType) {
@@ -135,7 +141,7 @@ const extractTextFromDocument = async (filePath, originalFilename) => {
 
   switch (fileType) {
     case 'pdf': {
-      const { text, pages } = await extractPagesFromPdf(filePath);
+      const { text, pages } = await extractPagesFromPdf(buffer);
       return {
         text,
         fileType,
@@ -143,9 +149,9 @@ const extractTextFromDocument = async (filePath, originalFilename) => {
       };
     }
     case 'docx':
-      return { ...(await extractTextFromDocx(filePath)), fileType };
+      return { ...(await extractTextFromDocx(buffer)), fileType };
     case 'pptx': {
-      const result = await extractSlidesFromPptx(filePath);
+      const result = await extractSlidesFromPptx(buffer);
       return { ...result, fileType };
     }
     default:
