@@ -1,4 +1,4 @@
-const { PDFParse } = require('pdf-parse');
+const pdfParse = require('pdf-parse');
 const { sanitizeExtractedText, validateExtractedText } = require('../utils/textSanitizer');
 
 /**
@@ -11,23 +11,29 @@ const extractPagesFromPdf = async (buffer) => {
     throw new Error('Buffer PDF tidak valid');
   }
 
-  let parser;
+  // Kumpulkan teks per halaman via pagerender callback (API pdf-parse 1.1.1)
+  const collectedPages = [];
+
+  const renderPage = async (pageData) => {
+    const textContent = await pageData.getTextContent();
+    const rawText = textContent.items.map((item) => item.str).join(' ');
+    const content = sanitizeExtractedText(rawText);
+
+    if (content.trim()) {
+      collectedPages.push({
+        slideNumber: pageData.pageNumber,
+        slideTitle: null,
+        content,
+      });
+    }
+
+    return content;
+  };
 
   try {
-    parser = new PDFParse({ data: buffer });
-    const result = await parser.getText();
+    await pdfParse(buffer, { pagerender: renderPage });
 
-    const pages = (result.pages || [])
-      .map((page) => {
-        const content = sanitizeExtractedText(page.text ?? '');
-        return {
-          slideNumber: page.num,
-          slideTitle: null,
-          content,
-        };
-      })
-      .filter((page) => page.content.trim());
-
+    const pages = collectedPages;
     const text = pages.map((page) => page.content).join('\n\n');
 
     console.log(`[Extract:pdf] Halaman dengan teks: ${pages.length}`);
@@ -43,10 +49,6 @@ const extractPagesFromPdf = async (buffer) => {
 
     console.error('[PDF] Gagal membaca buffer:', err.message);
     throw new Error(`Gagal membaca isi PDF: ${err.message}`);
-  } finally {
-    if (parser && typeof parser.destroy === 'function') {
-      await parser.destroy();
-    }
   }
 };
 
