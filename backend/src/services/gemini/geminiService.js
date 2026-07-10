@@ -61,20 +61,74 @@ const formatHistoryForGemini = (conversationHistory) => {
 const callGeminiWithKey = async (keyEntry, systemInstruction, contents) => {
   const model = createGenerativeModel(keyEntry.key, systemInstruction);
 
-  const result = await model.generateContent({
-    contents,
-    generationConfig: {
-      maxOutputTokens: geminiConfig.maxOutputTokens,
-    },
-  });
+  // Batas iterasi continuation sebagai safety guard agar tidak infinite loop
+  const MAX_CONTINUATION = 3;
 
-  const text = result.response.text();
+  let fullText = '';
+  let currentContents = contents;
 
-  if (!text || !text.trim()) {
-    throw new GeminiError('Gemini mengembalikan respons kosong', 502);
+  for (let iteration = 0; iteration <= MAX_CONTINUATION; iteration += 1) {
+    const result = await model.generateContent({
+      contents: currentContents,
+      generationConfig: {
+        maxOutputTokens: geminiConfig.maxOutputTokens,
+      },
+    });
+
+    const candidate = result.response.candidates?.[0];
+    const finishReason = candidate?.finishReason ?? 'UNKNOWN';
+    const partText = result.response.text() ?? '';
+
+    // Jika bagian ini kosong dan kita belum punya teks apapun, lempar error
+    if (!partText && !fullText) {
+      throw new GeminiError('Gemini mengembalikan respons kosong', 502);
+    }
+
+    // Gabungkan teks bagian ini ke hasil keseluruhan
+    fullText += partText;
+
+    console.log(
+      `[Gemini] Iterasi ${iteration + 1}: finishReason=${finishReason}, panjang teks=${partText.length} karakter`
+    );
+
+    // Selesai secara normal → langsung keluar loop
+    if (finishReason === 'STOP' || finishReason === 'END_OF_TURN') {
+      break;
+    }
+
+    // Respons terpotong karena batas token → minta Gemini melanjutkan
+    if (finishReason === 'MAX_TOKENS') {
+      if (iteration < MAX_CONTINUATION) {
+        console.warn(
+          `[Gemini] Respons terpotong (MAX_TOKENS) pada iterasi ${iteration + 1}. Meminta lanjutan...`
+        );
+
+        // Tambahkan teks yang sudah ada sebagai giliran model,
+        // lalu tambahkan perintah user untuk melanjutkan
+        currentContents = [
+          ...currentContents,
+          { role: 'model', parts: [{ text: partText }] },
+          { role: 'user', parts: [{ text: 'Lanjutkan.' }] },
+        ];
+        continue;
+      } else {
+        console.warn(
+          `[Gemini] Batas iterasi continuation tercapai (${MAX_CONTINUATION}). Menggunakan teks yang sudah ada.`
+        );
+        break;
+      }
+    }
+
+    // finishReason lain (SAFETY, RECITATION, dll.) → berhenti dengan teks yang sudah terkumpul
+    console.warn(`[Gemini] Berhenti dengan finishReason=${finishReason}.`);
+    break;
   }
 
-  return text.trim();
+  if (!fullText.trim()) {
+    throw new GeminiError('Gemini mengembalikan respons kosong setelah continuation', 502);
+  }
+
+  return fullText.trim();
 };
 
 const executeGenerateContent = async (systemInstruction, contents) => {
