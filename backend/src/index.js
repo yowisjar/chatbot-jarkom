@@ -22,6 +22,16 @@ app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 app.use(express.json());
 
+// [DIAGNOSTIC] Logging sementara — hapus setelah routing terverifikasi
+app.use((req, _res, next) => {
+  console.log('[DIAG]', req.method, JSON.stringify({
+    originalUrl: req.originalUrl,
+    url:         req.url,
+    baseUrl:     req.baseUrl,
+  }));
+  next();
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/chats', chatRoutes);
