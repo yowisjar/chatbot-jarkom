@@ -32,6 +32,14 @@ app.use((req, _res, next) => {
   next();
 });
 
+app.get("/ping", (req, res) => {
+  res.json({
+    ok: true,
+    from: "express",
+    time: new Date().toISOString()
+  });
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/chats', chatRoutes);
@@ -54,6 +62,24 @@ app.get('/api/health', (req, res) => {
 // Alias singkat untuk cek Ngrok / uptime monitor
 app.get('/health', (req, res) => {
   res.redirect('/api/health');
+});
+
+console.log("===== REGISTERED ROUTES =====");
+
+app._router.stack.forEach((layer) => {
+  if (layer.route) {
+    console.log(
+      `[ROUTE] ${Object.keys(layer.route.methods).join(",").toUpperCase()} ${layer.route.path}`
+    );
+  } else if (layer.name === "router") {
+    layer.handle.stack.forEach((handler) => {
+      if (handler.route) {
+        console.log(
+          `[ROUTE] ${Object.keys(handler.route.methods).join(",").toUpperCase()} ${handler.route.path}`
+        );
+      }
+    });
+  }
 });
 
 // 404 handler
